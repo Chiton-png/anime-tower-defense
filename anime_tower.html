@@ -1,0 +1,1255 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Anime Tower Defense – Card Upgrades</title>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{
+      background:#050509;
+      color:#f5f5f5;
+      font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      padding:10px;
+      user-select:none;
+    }
+    h1{font-size:22px;margin-bottom:4px}
+    p{font-size:12px;margin-bottom:6px;opacity:0.85;text-align:center}
+
+    #gameRow{
+      display:flex;
+      gap:12px;
+      margin-top:6px;
+      max-width:1200px;
+    }
+
+    #canvasContainer{
+      position:relative;
+    }
+    #gameCanvas{
+      display:block;
+      border-radius:8px;
+      border:2px solid #333;
+      background:#000;
+      image-rendering:pixelated;
+    }
+    #overlayText{
+      position:absolute;
+      left:50%;
+      top:8px;
+      transform:translateX(-50%);
+      padding:4px 10px;
+      background:rgba(0,0,0,0.65);
+      border-radius:999px;
+      font-size:12px;
+      pointer-events:none;
+    }
+
+    #sidebar{
+      min-width:230px;
+      max-width:260px;
+      background:#101017;
+      border-radius:8px;
+      border:1px solid #333;
+      padding:8px;
+      box-shadow:0 0 18px rgba(0,0,0,0.8);
+      font-size:12px;
+    }
+    #sidebar h2{
+      font-size:16px;
+      margin-bottom:4px;
+    }
+    #hudInfo{
+      margin-bottom:8px;
+      padding-bottom:6px;
+      border-bottom:1px solid #222;
+      font-size:12px;
+    }
+    #hudInfo div{
+      margin-bottom:2px;
+    }
+
+    #towerShop{
+      margin-top:6px;
+    }
+    #towerShop h3{
+      font-size:13px;
+      margin-bottom:4px;
+    }
+    .towerBtn{
+      width:100%;
+      text-align:left;
+      padding:6px 7px;
+      border-radius:6px;
+      border:1px solid #555;
+      background:#181820;
+      color:#f5f5f5;
+      margin-bottom:4px;
+      font-size:12px;
+      cursor:pointer;
+      transition:background 0.1s,transform 0.05s,box-shadow 0.1s,border-color 0.1s;
+    }
+    .towerBtn:hover{
+      background:#242432;
+      transform:translateY(-1px);
+      box-shadow:0 0 12px rgba(255,255,255,0.15);
+    }
+    .towerBtn.selected{
+      background:#203040;
+      border-color:#7bd0ff;
+      box-shadow:0 0 12px rgba(123,208,255,0.8);
+    }
+    .towerNameRow{
+      display:flex;
+      justify-content:space-between;
+      margin-bottom:2px;
+    }
+    .towerNameRow span{
+      font-weight:600;
+    }
+    .towerDesc{
+      font-size:11px;
+      opacity:0.85;
+    }
+
+    #smallHint{
+      margin-top:6px;
+      font-size:11px;
+      opacity:0.8;
+    }
+
+    /* CARD PANEL */
+    #cardPanel{
+      position:absolute;
+      inset:0;
+      display:none;
+      align-items:center;
+      justify-content:center;
+      background:rgba(0,0,0,0.75);
+      z-index:10;
+    }
+    #cardInner{
+      background:#111118;
+      border-radius:10px;
+      padding:14px;
+      max-width:720px;
+      width:92%;
+      box-shadow:0 0 24px rgba(0,0,0,0.9);
+      font-size:13px;
+    }
+    #cardInner h2{
+      font-size:18px;
+      margin-bottom:4px;
+    }
+    #cardInner p{
+      margin-bottom:8px;
+      font-size:11px;
+      opacity:0.9;
+    }
+    #cardRow{
+      display:flex;
+      gap:8px;
+      flex-wrap:wrap;
+      justify-content:center;
+    }
+    .card{
+      flex:1 1 180px;
+      max-width:210px;
+      padding:8px;
+      border-radius:8px;
+      border:1px solid #555;
+      background:#181820;
+      cursor:pointer;
+      transition:background 0.1s,transform 0.08s,box-shadow 0.1s,border-color 0.1s;
+    }
+    .card:hover{
+      background:#242432;
+      transform:translateY(-2px);
+      box-shadow:0 0 18px rgba(255,255,255,0.2);
+    }
+    .cardNameRow{
+      display:flex;
+      justify-content:space-between;
+      margin-bottom:2px;
+    }
+    .cardName{
+      font-weight:600;
+      font-size:13px;
+    }
+    .cardText{
+      font-size:11px;
+      margin-bottom:4px;
+      opacity:0.95;
+    }
+    .cardRarityBadge{
+      font-size:9px;
+      padding:2px 6px;
+      border-radius:999px;
+      text-transform:uppercase;
+      letter-spacing:0.05em;
+      font-weight:600;
+      border:1px solid transparent;
+    }
+
+    .card-common{
+      box-shadow:0 0 6px rgba(130,220,130,0.5);
+      border-color:rgba(130,220,130,0.85);
+    }
+    .card-rare{
+      box-shadow:0 0 8px rgba(120,180,255,0.7);
+      border-color:rgba(120,180,255,0.9);
+    }
+    .card-epic{
+      box-shadow:0 0 10px rgba(210,140,255,0.8);
+      border-color:rgba(210,140,255,1);
+    }
+    .card-legendary{
+      box-shadow:0 0 12px rgba(255,210,100,1);
+      border-color:rgba(255,210,100,1);
+    }
+
+    .badge-common{
+      color:#b8f7b8;
+      background:rgba(80,160,80,0.2);
+      border-color:rgba(130,220,130,0.8);
+    }
+    .badge-rare{
+      color:#87c7ff;
+      background:rgba(80,120,200,0.2);
+      border-color:rgba(120,180,255,0.9);
+    }
+    .badge-epic{
+      color:#e3b3ff;
+      background:rgba(150,80,200,0.2);
+      border-color:rgba(210,150,255,0.9);
+    }
+    .badge-legendary{
+      color:#ffe08a;
+      background:rgba(200,140,40,0.25);
+      border-color:rgba(255,210,120,0.95);
+    }
+
+    .cardSmall{
+      font-size:10px;
+      opacity:0.8;
+    }
+
+    #startOverlay{
+      position:absolute;
+      inset:0;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      background:rgba(0,0,0,0.9);
+      z-index:20;
+    }
+    #startBox{
+      background:#111118;
+      border-radius:10px;
+      padding:12px 16px;
+      max-width:480px;
+      width:92%;
+      box-shadow:0 0 24px rgba(0,0,0,0.9);
+      font-size:12px;
+    }
+    #startBox h2{
+      margin-bottom:4px;
+    }
+    #startBox p{
+      margin-bottom:4px;
+      opacity:0.9;
+    }
+    #startButton{
+      margin-top:8px;
+      padding:6px 16px;
+      border-radius:999px;
+      border:1px solid #777;
+      background:#222;
+      color:#f5f5f5;
+      cursor:pointer;
+      font-size:13px;
+    }
+    #startButton:hover{
+      background:#333;
+    }
+
+    @media(max-width:900px){
+      #gameRow{
+        flex-direction:column;
+        align-items:center;
+      }
+      #sidebar{
+        max-width:960px;
+        width:100%;
+      }
+    }
+  </style>
+</head>
+<body>
+  <h1>Anime Tower Defense – Card Run</h1>
+  <p>
+    Click a unit on the right, then click the map to place it (not on the path).<br>
+    Survive waves and pick powerful anime-themed cards after each wave.
+  </p>
+
+  <div id="gameRow">
+    <div id="canvasContainer">
+      <canvas id="gameCanvas" width="960" height="540"></canvas>
+      <div id="overlayText"></div>
+
+      <!-- CARD PANEL -->
+      <div id="cardPanel">
+        <div id="cardInner">
+          <h2>Choose a Power Card</h2>
+          <p>
+            Each card buffs your towers but usually comes with a drawback. Effects stack for the rest of the run.
+            Pick <b>one</b> card to continue to the next wave.
+          </p>
+          <div id="cardRow"></div>
+        </div>
+      </div>
+
+      <!-- START OVERLAY -->
+      <div id="startOverlay">
+        <div id="startBox">
+          <h2>Start Run</h2>
+          <p>
+            This is a simple anime tower defense: place units, survive waves, and grab crazy upgrade cards.
+          </p>
+          <p>
+            <b>Controls:</b> Click a unit → click on a buildable tile to place it. Enemies follow the glowing path.
+          </p>
+          <p>
+            After every wave you get to select a <b>card</b> to power up (damage, range, anime synergy, etc.).
+          </p>
+          <button id="startButton">Start Game</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="sidebar">
+      <h2>Units & Stats</h2>
+      <div id="hudInfo">
+        <div id="hudWave">Wave: 0</div>
+        <div id="hudGold">Gold: 0</div>
+        <div id="hudLives">Lives: 0</div>
+        <div id="hudEnemies">Enemies: 0</div>
+      </div>
+
+      <div id="towerShop">
+        <h3>Unit Shop</h3>
+
+        <button class="towerBtn" data-tower="slayer">
+          <div class="towerNameRow">
+            <span>Demon Slayer</span>
+            <span>Cost 40</span>
+          </div>
+          <div class="towerDesc">
+            Fast single-target slashes. Medium range.
+          </div>
+        </button>
+
+        <button class="towerBtn" data-tower="sorcerer">
+          <div class="towerNameRow">
+            <span>Cursed Sorcerer</span>
+            <span>Cost 60</span>
+          </div>
+          <div class="towerDesc">
+            AoE cursed blasts. Slower but hits multiple enemies.
+          </div>
+        </button>
+
+        <button class="towerBtn" data-tower="sniper">
+          <div class="towerNameRow">
+            <span>Survey Sniper</span>
+            <span>Cost 70</span>
+          </div>
+          <div class="towerDesc">
+            Very long range, high damage, slow shots.
+          </div>
+        </button>
+      </div>
+
+      <div id="smallHint">
+        Tip: Place towers near turns so they hit longer. Cards can buff specific anime archetypes.<br><br>
+        Cards have rarities: <span style="color:#b8f7b8">Common</span>, <span style="color:#87c7ff">Rare</span>,
+        <span style="color:#e3b3ff">Epic</span>, <span style="color:#ffe08a">Legendary</span>.
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const canvas=document.getElementById("gameCanvas");
+    const ctx=canvas.getContext("2d");
+    const overlayText=document.getElementById("overlayText");
+
+    const cardPanel=document.getElementById("cardPanel");
+    const cardRow=document.getElementById("cardRow");
+    const startOverlay=document.getElementById("startOverlay");
+    const startButton=document.getElementById("startButton");
+
+    const hudWave=document.getElementById("hudWave");
+    const hudGold=document.getElementById("hudGold");
+    const hudLives=document.getElementById("hudLives");
+    const hudEnemies=document.getElementById("hudEnemies");
+
+    const towerButtons=document.querySelectorAll(".towerBtn");
+
+    const TILE=40;
+    const GRID_W=Math.floor(canvas.width/TILE);
+    const GRID_H=Math.floor(canvas.height/TILE);
+
+    // Simple pre-defined path (grid coordinates)
+    const pathGrid=[
+      {x:0,y:6},{x:6,y:6},{x:6,y:3},{x:14,y:3},{x:14,y:9},{x:22,y:9},{x:22,y:4},{x:23,y:4}
+    ];
+
+    function gridToWorld(gx,gy){
+      return{x:gx*TILE+TILE/2,y:gy*TILE+TILE/2};
+    }
+    const path=pathGrid.map(p=>gridToWorld(p.x,p.y));
+
+    function lerp(a,b,t){return a+(b-a)*t;}
+
+    let towers=[];   // {x,y,type,range,fireRate,damage,aoe,animeTag,...}
+    let enemies=[];  // {x,y,hp,maxHp,speed,pathIndex,t, radius, color}
+    let bullets=[];  // {x,y,vx,vy,damage,aoe}
+    let particles=[];
+
+    let wave=0;
+    let gold=90;
+    let lives=20;
+    let spawnTimer=0;
+    let enemiesToSpawn=0;
+    let spawnGap=1.0;
+    let gameRunning=false;
+    let inCardChoice=false;
+    let messageTimer=0;
+    let selectedTowerType=null;
+
+    // Global modifiers from cards
+    let globalMods={
+      damageMult:1,
+      firerateMult:1,
+      rangeMult:1,
+      aoeMult:1,
+      slayerDamageMult:1,
+      sorcererDamageMult:1,
+      sniperDamageMult:1,
+      goldMult:1,
+      slowOnHit:false,
+      extraLives:0
+    };
+
+    const CARD_DEFS=[
+      // Common
+      {
+        id:"slayer_blades",
+        name:"Slayer Blades",
+        rarity:"common",
+        desc:"+20% Demon Slayer damage, -10% range.",
+        apply:()=>{globalMods.slayerDamageMult*=1.2;globalMods.rangeMult*=0.9;}
+      },
+      {
+        id:"cursed_pages",
+        name:"Cursed Pages",
+        rarity:"common",
+        desc:"+20% Sorcerer damage, -10% fire rate.",
+        apply:()=>{globalMods.sorcererDamageMult*=1.2;globalMods.firerateMult*=0.9;}
+      },
+      {
+        id:"titan_scopes",
+        name:"Titan Scopes",
+        rarity:"common",
+        desc:"+25% Sniper range, -10% Sniper damage.",
+        apply:()=>{globalMods.rangeMult*=1.15;globalMods.sniperDamageMult*=0.9;}
+      },
+      {
+        id:"coin_pouch",
+        name:"Coin Pouch",
+        rarity:"common",
+        desc:"+20% gold gained, enemies +5% HP.",
+        apply:()=>{globalMods.goldMult*=1.2;hpScale*=1.05;}
+      },
+      {
+        id:"extra_life",
+        name:"Reinforcements",
+        rarity:"common",
+        desc:"+2 lives.",
+        apply:()=>{lives+=2;}
+      },
+
+      // Rare
+      {
+        id:"water_breathing_form",
+        name:"Water Breathing Form",
+        rarity:"rare",
+        desc:"Demon Slayers get +35% damage, -10% fire rate.",
+        apply:()=>{globalMods.slayerDamageMult*=1.35;globalMods.firerateMult*=0.9;}
+      },
+      {
+        id:"black_flash",
+        name:"Black Flash Rhythm",
+        rarity:"rare",
+        desc:"All towers +20% damage, -10% fire rate.",
+        apply:()=>{globalMods.damageMult*=1.2;globalMods.firerateMult*=0.9;}
+      },
+      {
+        id:"flame_hashira",
+        name:"Flame Hashira Aura",
+        rarity:"rare",
+        desc:"All towers +20% range, enemies +10% speed.",
+        apply:()=>{globalMods.rangeMult*=1.2;speedScale*=1.1;}
+      },
+      {
+        id:"shadow_contract",
+        name:"Shadow Contract",
+        rarity:"rare",
+        desc:"Sorcerers gain small AoE, enemies +10% HP.",
+        apply:()=>{globalMods.aoeMult*=1.25;hpScale*=1.1;}
+      },
+      {
+        id:"scouting_regiment",
+        name:"Scouting Regiment",
+        rarity:"rare",
+        desc:"+1 gold per enemy killed, -10 starting gold next waves.",
+        apply:()=>{goldBonusPerKill+=1;}
+      },
+
+      // Epic
+      {
+        id:"domain_overclock",
+        name:"Domain Overclock",
+        rarity:"epic",
+        desc:"+30% damage & range, enemies +20% HP.",
+        apply:()=>{globalMods.damageMult*=1.3;globalMods.rangeMult*=1.3;hpScale*=1.2;}
+      },
+      {
+        id:"gear_second",
+        name:"Gear Second Towers",
+        rarity:"epic",
+        desc:"+40% fire rate, -15% damage.",
+        apply:()=>{globalMods.firerateMult*=1.4;globalMods.damageMult*=0.85;}
+      },
+      {
+        id:"ghoul_feast",
+        name:"Ghoul Feast",
+        rarity:"epic",
+        desc:"+30% damage when enemies are past half path, -10% global damage otherwise.",
+        apply:()=>{latePathBonus=true;globalMods.damageMult*=0.9;}
+      },
+      {
+        id:"thunder_god_field",
+        name:"Thunder God Field",
+        rarity:"epic",
+        desc:"Bullets slightly slow enemies on hit.",
+        apply:()=>{globalMods.slowOnHit=true;}
+      },
+
+      // Legendary
+      {
+        id:"shadow_monarch",
+        name:"Shadow Monarch Authority",
+        rarity:"legendary",
+        desc:"+50% damage, enemies +30% HP.",
+        apply:()=>{globalMods.damageMult*=1.5;hpScale*=1.3;}
+      },
+      {
+        id:"limit_break",
+        name:"Limit Break",
+        rarity:"legendary",
+        desc:"Double all current card bonuses (and penalties).",
+        apply:()=>{doubleGlobalMods();}
+      },
+      {
+        id:"king_of_curses",
+        name:"King of Curses",
+        rarity:"legendary",
+        desc:"+80% damage, enemies +40% HP and +20% speed.",
+        apply:()=>{globalMods.damageMult*=1.8;hpScale*=1.4;speedScale*=1.2;}
+      },
+      {
+        id:"perfect_sniper",
+        name:"Perfect Surveyor",
+        rarity:"legendary",
+        desc:"Snipers +120% damage, -30% fire rate.",
+        apply:()=>{globalMods.sniperDamageMult*=2.2;globalMods.firerateMult*=0.7;}
+      }
+    ];
+
+    function doubleGlobalMods(){
+      globalMods.damageMult*=2;
+      globalMods.firerateMult*=2;
+      globalMods.rangeMult*=2;
+      globalMods.aoeMult*=2;
+      globalMods.slayerDamageMult*=2;
+      globalMods.sorcererDamageMult*=2;
+      globalMods.sniperDamageMult*=2;
+      globalMods.goldMult*=2;
+      if(globalMods.slowOnHit){} // stays true
+      hpScale*=2;
+      speedScale*=2;
+    }
+
+    function rarityWeight(r){
+      if(r==="common")return 4;
+      if(r==="rare")return 3;
+      if(r==="epic")return 2;
+      if(r==="legendary")return 1;
+      return 1;
+    }
+    function pickCard(){
+      // Weighted pick
+      let total=0;
+      for(const c of CARD_DEFS){total+=rarityWeight(c.rarity);}
+      let r=Math.random()*total;
+      for(const c of CARD_DEFS){
+        r-=rarityWeight(c.rarity);
+        if(r<=0)return c;
+      }
+      return CARD_DEFS[CARD_DEFS.length-1];
+    }
+
+    function generateCardChoices(){
+      const choices=[];
+      const used=new Set();
+      while(choices.length<3){
+        const c=pickCard();
+        if(used.has(c.id))continue;
+        used.add(c.id);
+        choices.push(c);
+      }
+      return choices;
+    }
+
+    function rarityClass(r){
+      if(r==="common")return "card-common badge-common";
+      if(r==="rare")return "card-rare badge-rare";
+      if(r==="epic")return "card-epic badge-epic";
+      if(r==="legendary")return "card-legendary badge-legendary";
+      return "card-common badge-common";
+    }
+    function cardFrameClass(r){
+      if(r==="common")return "card card-common";
+      if(r==="rare")return "card card-rare";
+      if(r==="epic")return "card card-epic";
+      if(r==="legendary")return "card card-legendary";
+      return "card card-common";
+    }
+
+    function showCardPanel(){
+      inCardChoice=true;
+      cardRow.innerHTML="";
+      const choices=generateCardChoices();
+      choices.forEach(card=>{
+        const div=document.createElement("div");
+        div.className=cardFrameClass(card.rarity);
+        const badgeClass=rarityClass(card.rarity).split(" ")[1];
+        const rarityLabel=card.rarity.charAt(0).toUpperCase()+card.rarity.slice(1);
+        div.innerHTML=`
+          <div class="cardNameRow">
+            <span class="cardName">${card.name}</span>
+            <span class="cardRarityBadge ${badgeClass}">${rarityLabel}</span>
+          </div>
+          <div class="cardText">${card.desc}</div>
+          <div class="cardSmall">Click to take this card.</div>
+        `;
+        div.addEventListener("click",()=>{
+          card.apply();
+          hideCardPanel();
+          startNextWave();
+        });
+        cardRow.appendChild(div);
+      });
+      cardPanel.style.display="flex";
+    }
+
+    function hideCardPanel(){
+      inCardChoice=false;
+      cardPanel.style.display="none";
+    }
+
+    // Enemy scaling
+    let hpScale=1.0;
+    let speedScale=1.0;
+    let goldBonusPerKill=0;
+    let latePathBonus=false;
+
+    function showMessage(msg,dur=2){
+      overlayText.textContent=msg;
+      messageTimer=dur;
+    }
+
+    function updateHUD(){
+      hudWave.textContent=`Wave: ${wave}`;
+      hudGold.textContent=`Gold: ${Math.floor(gold)}`;
+      hudLives.textContent=`Lives: ${lives}`;
+      hudEnemies.textContent=`Enemies: ${enemies.length}`;
+    }
+
+    function selectTower(type){
+      selectedTowerType=type;
+      towerButtons.forEach(btn=>{
+        if(btn.getAttribute("data-tower")===type)btn.classList.add("selected");
+        else btn.classList.remove("selected");
+      });
+      let name="Tower";
+      if(type==="slayer")name="Demon Slayer";
+      else if(type==="sorcerer")name="Cursed Sorcerer";
+      else if(type==="sniper")name="Survey Sniper";
+      showMessage(`Selected: ${name}. Click a valid tile to place.`,2);
+    }
+
+    towerButtons.forEach(btn=>{
+      btn.addEventListener("click",()=>{
+        const type=btn.getAttribute("data-tower");
+        selectTower(type);
+      });
+    });
+
+    canvas.addEventListener("click",e=>{
+      if(!gameRunning || inCardChoice)return;
+      if(!selectedTowerType){
+        showMessage("Select a unit from the right first.",1.5);
+        return;
+      }
+      const rect=canvas.getBoundingClientRect();
+      const mx=e.clientX-rect.left;
+      const my=e.clientY-rect.top;
+      const gx=Math.floor(mx/TILE);
+      const gy=Math.floor(my/TILE);
+      if(!canBuildHere(gx,gy)){
+        showMessage("You can't build on the path or outside the grid.",1.5);
+        return;
+      }
+
+      const cost=getTowerCost(selectedTowerType);
+      if(gold<cost){
+        showMessage("Not enough gold.",1.5);
+        return;
+      }
+
+      gold-=cost;
+      const pos=gridToWorld(gx,gy);
+      towers.push(createTower(selectedTowerType,pos.x,pos.y));
+      showMessage("Unit placed.",1.4);
+    });
+
+    function getTowerCost(type){
+      if(type==="slayer")return 40;
+      if(type==="sorcerer")return 60;
+      if(type==="sniper")return 70;
+      return 50;
+    }
+
+    function isOnPath(gx,gy){
+      for(let i=0;i<pathGrid.length-1;i++){
+        const a=pathGrid[i];
+        const b=pathGrid[i+1];
+        if(a.x===b.x){
+          // vertical
+          const x=a.x;
+          const ymin=Math.min(a.y,b.y);
+          const ymax=Math.max(a.y,b.y);
+          if(gx===x && gy>=ymin && gy<=ymax)return true;
+        }else if(a.y===b.y){
+          // horizontal
+          const y=a.y;
+          const xmin=Math.min(a.x,b.x);
+          const xmax=Math.max(a.x,b.x);
+          if(gy===y && gx>=xmin && gx<=xmax)return true;
+        }
+      }
+      return false;
+    }
+
+    function canBuildHere(gx,gy){
+      if(gx<0||gx>=GRID_W||gy<0||gy>=GRID_H)return false;
+      if(isOnPath(gx,gy))return false;
+      // don't build too close to path center (optional)
+      const w=gridToWorld(gx,gy);
+      for(const p of path){
+        const d=Math.hypot(p.x-w.x,p.y-w.y);
+        if(d<20)return false;
+      }
+      // avoid overlapping towers
+      for(const t of towers){
+        const tgx=Math.floor(t.x/TILE);
+        const tgy=Math.floor(t.y/TILE);
+        if(tgx===gx && tgy===gy)return false;
+      }
+      return true;
+    }
+
+    function createTower(type,x,y){
+      if(type==="slayer"){
+        return{
+          x,y,
+          type,
+          range:130,
+          fireRate:1.4,
+          damage:18,
+          aoeRadius:0,
+          anime:"demon_slayer",
+          cooldown:0
+        };
+      }else if(type==="sorcerer"){
+        return{
+          x,y,
+          type,
+          range:150,
+          fireRate:0.9,
+          damage:14,
+          aoeRadius:45,
+          anime:"jjk",
+          cooldown:0
+        };
+      }else if(type==="sniper"){
+        return{
+          x,y,
+          type,
+          range:220,
+          fireRate:0.7,
+          damage:40,
+          aoeRadius:0,
+          anime:"aot",
+          cooldown:0
+        };
+      }
+      return{
+        x,y,
+        type:"generic",
+        range:120,
+        fireRate:1,
+        damage:10,
+        aoeRadius:0,
+        anime:"generic",
+        cooldown:0
+      };
+    }
+
+    function createEnemy(){
+      const start=path[0];
+      return{
+        x:start.x,
+        y:start.y,
+        hp:40*hpScale + wave*8*hpScale,
+        maxHp:40*hpScale + wave*8*hpScale,
+        speed:(35+wave*1.2)*speedScale,
+        pathIndex:0,
+        t:0,
+        radius:14,
+        color:"#ff7474",
+        slowTimer:0
+      };
+    }
+
+    function createBullet(tx,ty,enemy,tower){
+      const dx=enemy.x-tx;
+      const dy=enemy.y-ty;
+      const dist=Math.hypot(dx,dy)||1;
+      const speed=220;
+      return{
+        x:tx,
+        y:ty,
+        vx:dx/dist*speed,
+        vy:dy/dist*speed,
+        damage:computeTowerDamage(tower),
+        aoeRadius:computeTowerAoe(tower),
+        slow:globalMods.slowOnHit?0.4:0
+      };
+    }
+
+    function computeTowerDamage(tower){
+      let d=tower.damage;
+      d*=globalMods.damageMult;
+
+      if(tower.type==="slayer")d*=globalMods.slayerDamageMult;
+      if(tower.type==="sorcerer")d*=globalMods.sorcererDamageMult;
+      if(tower.type==="sniper")d*=globalMods.sniperDamageMult;
+
+      if(latePathBonus){
+        // we’ll check position in bullet hit
+      }
+      return d;
+    }
+
+    function computeTowerAoe(tower){
+      let r=tower.aoeRadius;
+      if(r>0)r*=globalMods.aoeMult;
+      return r;
+    }
+
+    function startNextWave(){
+      wave++;
+      enemiesToSpawn=6+Math.floor(wave*1.5);
+      spawnTimer=1;
+      spawnGap=Math.max(0.4,1.1 - wave*0.03);
+      showMessage(`Wave ${wave}`,1.7);
+    }
+
+    function openCardChoice(){
+      showCardPanel();
+    }
+
+    function gameOver(){
+      gameRunning=false;
+      showMessage("Defeat. Reload page to try again.",4);
+    }
+
+    startButton.addEventListener("click",()=>{
+      startOverlay.style.display="none";
+      resetGame();
+      gameRunning=true;
+      startNextWave();
+    });
+
+    function resetGame(){
+      towers=[];
+      enemies=[];
+      bullets=[];
+      particles=[];
+      wave=0;
+      gold=90;
+      lives=20;
+      hpScale=1;
+      speedScale=1;
+      goldBonusPerKill=0;
+      latePathBonus=false;
+      globalMods={
+        damageMult:1,
+        firerateMult:1,
+        rangeMult:1,
+        aoeMult:1,
+        slayerDamageMult:1,
+        sorcererDamageMult:1,
+        sniperDamageMult:1,
+        goldMult:1,
+        slowOnHit:false,
+        extraLives:0
+      };
+      spawnTimer=0;
+      enemiesToSpawn=0;
+      gameRunning=true;
+      inCardChoice=false;
+      selectedTowerType=null;
+      towerButtons.forEach(btn=>btn.classList.remove("selected"));
+      showMessage("Place a few units, then survive the first wave.",2.5);
+    }
+
+    function update(dt){
+      if(messageTimer>0){
+        messageTimer-=dt;
+        if(messageTimer<=0)overlayText.textContent="";
+      }
+
+      if(!gameRunning)return;
+
+      // spawn
+      if(enemiesToSpawn>0){
+        spawnTimer-=dt;
+        if(spawnTimer<=0){
+          spawnTimer=spawnGap;
+          enemies.push(createEnemy());
+          enemiesToSpawn--;
+        }
+      }
+
+      // enemies
+      for(let i=enemies.length-1;i>=0;i--){
+        const e=enemies[i];
+        let speed=e.speed;
+        if(e.slowTimer>0){
+          e.slowTimer-=dt;
+          speed*=0.6;
+        }
+        const aIndex=e.pathIndex;
+        const bIndex=e.pathIndex+1;
+        if(bIndex>=path.length){
+          // reached end
+          enemies.splice(i,1);
+          lives--;
+          if(lives<=0){
+            gameOver();
+          }
+          continue;
+        }
+        const a=path[aIndex];
+        const b=path[bIndex];
+        const segLen=Math.hypot(b.x-a.x,b.y-a.y)||1;
+        const move=speed*dt;
+        const segLeft=segLen*(1-e.t);
+        const progress=move/segLen;
+        if(move<segLeft){
+          e.t+=progress;
+        }else{
+          e.pathIndex++;
+          e.t=0;
+        }
+        const px=lerp(a.x,b.x,e.t);
+        const py=lerp(a.y,b.y,e.t);
+        e.x=px;
+        e.y=py;
+      }
+
+      // towers -> shooting
+      for(const t of towers){
+        t.cooldown-=dt;
+        if(t.cooldown<=0){
+          const range=t.range*globalMods.rangeMult;
+          let target=null;
+          let bestProgress=-1;
+          for(const e of enemies){
+            const dist=Math.hypot(e.x-t.x,e.y-t.y);
+            if(dist>range)continue;
+            // progress: index+ t
+            const prog=e.pathIndex+e.t;
+            if(prog>bestProgress){
+              bestProgress=prog;
+              target=e;
+            }
+          }
+          if(target){
+            bullets.push(createBullet(t.x,t.y,target,t));
+            const baseRate=t.fireRate*globalMods.firerateMult;
+            t.cooldown=1/Math.max(0.2,baseRate);
+            spawnParticles(t.x,t.y,2,"rgba(255,255,255,0.8)");
+          }
+        }
+      }
+
+      // bullets
+      for(let i=bullets.length-1;i>=0;i--){
+        const b=bullets[i];
+        b.x+=b.vx*dt;
+        b.y+=b.vy*dt;
+        let remove=false;
+        if(b.x<-40||b.x>canvas.width+40||b.y<-40||b.y>canvas.height+40)remove=true;
+
+        for(let j=enemies.length-1;j>=0;j--){
+          const e=enemies[j];
+          const d=Math.hypot(e.x-b.x,e.y-b.y);
+          if(d<e.radius+4){
+            // damage
+            let dmg=b.damage;
+            if(latePathBonus){
+              const prog=(e.pathIndex+e.t)/(path.length-1);
+              if(prog>0.5)dmg*=1.3;
+            }
+            e.hp-=dmg;
+            if(b.slow>0)e.slowTimer=Math.max(e.slowTimer,b.slow);
+
+            if(b.aoeRadius>0){
+              for(const e2 of enemies){
+                const d2=Math.hypot(e2.x-b.x,e2.y-b.y);
+                if(d2<b.aoeRadius){
+                  e2.hp-=dmg*0.6;
+                }
+              }
+              spawnParticles(b.x,b.y,11,"rgba(190,160,255,0.9)");
+            }else{
+              spawnParticles(b.x,b.y,7,"rgba(255,240,200,0.9)");
+            }
+
+            remove=true;
+            break;
+          }
+        }
+
+        if(remove){
+          bullets.splice(i,1);
+        }
+      }
+
+      // kill enemies, give gold
+      for(let i=enemies.length-1;i>=0;i--){
+        const e=enemies[i];
+        if(e.hp<=0){
+          const reward=(6+wave*0.6)*globalMods.goldMult + goldBonusPerKill;
+          gold+=reward;
+          spawnParticles(e.x,e.y,10,"rgba(255,140,140,0.95)");
+          enemies.splice(i,1);
+        }
+      }
+
+      // next wave / cards
+      if(enemies.length===0 && enemiesToSpawn===0 && gameRunning && !inCardChoice){
+        openCardChoice();
+      }
+
+      updateHUD();
+      updateParticles(dt);
+    }
+
+    function spawnParticles(x,y,count,color){
+      for(let i=0;i<count;i++){
+        particles.push({
+          x,y,
+          vx:(Math.random()*2-1)*80,
+          vy:(Math.random()*2-1)*80,
+          life:0.4+Math.random()*0.4,
+          maxLife:0.8,
+          color
+        });
+      }
+    }
+
+    function updateParticles(dt){
+      for(let i=particles.length-1;i>=0;i--){
+        const p=particles[i];
+        p.life-=dt;
+        if(p.life<=0){particles.splice(i,1);continue;}
+        p.x+=p.vx*dt;
+        p.y+=p.vy*dt;
+        p.vy+=30*dt;
+      }
+    }
+
+    function drawBackground(){
+      // gradient
+      const g=ctx.createRadialGradient(canvas.width/2,canvas.height/2,0,canvas.width/2,canvas.height/2,canvas.width*0.7);
+      g.addColorStop(0,"#181b2f");
+      g.addColorStop(0.5,"#0b0b18");
+      g.addColorStop(1,"#020208");
+      ctx.fillStyle=g;
+      ctx.fillRect(0,0,canvas.width,canvas.height);
+
+      // path
+      ctx.strokeStyle="#3ad4ff";
+      ctx.lineWidth=20;
+      ctx.lineCap="round";
+      ctx.beginPath();
+      for(let i=0;i<path.length;i++){
+        const p=path[i];
+        if(i===0)ctx.moveTo(p.x,p.y);
+        else ctx.lineTo(p.x,p.y);
+      }
+      ctx.stroke();
+
+      // grid faint
+      ctx.save();
+      ctx.globalAlpha=0.1;
+      ctx.strokeStyle="#2a2a3c";
+      ctx.lineWidth=1;
+      for(let x=0;x<=canvas.width;x+=TILE){
+        ctx.beginPath();
+        ctx.moveTo(x,0);ctx.lineTo(x,canvas.height);ctx.stroke();
+      }
+      for(let y=0;y<=canvas.height;y+=TILE){
+        ctx.beginPath();
+        ctx.moveTo(0,y);ctx.lineTo(canvas.width,y);ctx.stroke();
+      }
+      ctx.restore();
+    }
+
+    function drawTowers(){
+      for(const t of towers){
+        ctx.save();
+        // base
+        ctx.beginPath();
+        ctx.arc(t.x,t.y,12,0,Math.PI*2);
+        if(t.type==="slayer"){
+          ctx.fillStyle="#ffb35c";
+        }else if(t.type==="sorcerer"){
+          ctx.fillStyle="#b28cff";
+        }else if(t.type==="sniper"){
+          ctx.fillStyle="#7bd0ff";
+        }else ctx.fillStyle="#ffffff";
+        ctx.fill();
+
+        ctx.lineWidth=2;
+        ctx.strokeStyle="#000";
+        ctx.stroke();
+
+        // icon line
+        ctx.beginPath();
+        ctx.moveTo(t.x,t.y);
+        ctx.lineWidth=3;
+        if(t.type==="slayer"){
+          ctx.strokeStyle="#fff4d0";
+          ctx.lineTo(t.x+8,t.y-8);
+        }else if(t.type==="sorcerer"){
+          ctx.strokeStyle="#f2e0ff";
+          ctx.lineTo(t.x+10,t.y);
+        }else if(t.type==="sniper"){
+          ctx.strokeStyle="#e0f7ff";
+          ctx.lineTo(t.x+10,t.y-4);
+        }
+        ctx.stroke();
+        ctx.restore();
+      }
+    }
+
+    function drawEnemies(){
+      for(const e of enemies){
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(e.x,e.y,e.radius,0,Math.PI*2);
+        ctx.fillStyle=e.color;
+        ctx.fill();
+        ctx.lineWidth=2;
+        ctx.strokeStyle="#000";
+        ctx.stroke();
+
+        // hp bar
+        const w=e.radius*2;
+        const h=4;
+        const ratio=Math.max(0,e.hp/e.maxHp);
+        ctx.fillStyle="rgba(0,0,0,0.8)";
+        ctx.fillRect(e.x-w/2,e.y-e.radius-8,w,h);
+        ctx.fillStyle="#7cff9a";
+        ctx.fillRect(e.x-w/2,e.y-e.radius-8,w*ratio,h);
+
+        ctx.restore();
+      }
+    }
+
+    function drawBullets(){
+      ctx.save();
+      ctx.fillStyle="#fff4d0";
+      for(const b of bullets){
+        ctx.beginPath();
+        ctx.arc(b.x,b.y,3,0,Math.PI*2);
+        ctx.fill();
+      }
+      ctx.restore();
+    }
+
+    function drawParticles(){
+      for(const p of particles){
+        const t=p.life/p.maxLife;
+        const alpha=Math.max(0,t);
+        ctx.save();
+        ctx.globalAlpha=alpha;
+        ctx.fillStyle=p.color;
+        ctx.beginPath();
+        ctx.arc(p.x,p.y,3,0,Math.PI*2);
+        ctx.fill();
+        ctx.restore();
+      }
+    }
+
+    let lastTime=0;
+    function loop(timestamp){
+      if(!lastTime)lastTime=timestamp;
+      const dt=Math.min((timestamp-lastTime)/1000,0.033);
+      lastTime=timestamp;
+
+      update(dt);
+
+      ctx.clearRect(0,0,canvas.width,canvas.height);
+      drawBackground();
+      drawTowers();
+      drawEnemies();
+      drawBullets();
+      drawParticles();
+
+      requestAnimationFrame(loop);
+    }
+
+    requestAnimationFrame(loop);
+  </script>
+</body>
+</html>
